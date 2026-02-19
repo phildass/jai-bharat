@@ -1,0 +1,22 @@
+{
+  "name": "@jai-bharat/learn-ias",
+  "version": "1.0.0",
+  "description": "Learn IAS - Elite module for UPSC/State PSC preparation",
+  "main": "index.ts",
+  "scripts": {
+    "test": "jest"
+  },
+  "keywords": [
+    "upsc",
+    "ias",
+    "ips",
+    "civil-services",
+    "state-psc"
+  ],
+  "author": "Jai Bharat Team",
+  "license": "MIT",
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-native": "^0.72.0"
+  }
+}
