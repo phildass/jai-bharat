@@ -1,0 +1,22 @@
+{
+  "name": "@jai-bharat/learn-govt-jobs",
+  "version": "1.0.0",
+  "description": "Learn Govt Jobs - Foundation module for SSC, Banking, Railways, Police prep",
+  "main": "index.ts",
+  "scripts": {
+    "test": "jest"
+  },
+  "keywords": [
+    "government-jobs",
+    "ssc",
+    "banking",
+    "railways",
+    "police"
+  ],
+  "author": "Jai Bharat Team",
+  "license": "MIT",
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-native": "^0.72.0"
+  }
+}
