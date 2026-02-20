@@ -116,6 +116,16 @@ export const AppConfig = {
     email: 'support@jaibharat.cloud',
     phone: '+91-XXXX-XXXXXX',
   },
+
+  // Subscription & Payment (24-hour trial + one-time lifetime payment)
+  subscription: {
+    trialDurationHours: 24,
+    paymentUrl: process.env.PAYMENT_URL || 'https://aienter.in/payments/jaibharatpay',
+    paymentAmount: 116.82, // ₹99 + 18% GST
+    supportEmail: 'support@iiskills.cloud',
+    otpExpiryMinutes: 10,
+    otpMaxAttempts: 5,
+  },
 };
 
 export default AppConfig;
