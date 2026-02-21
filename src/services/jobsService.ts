@@ -7,6 +7,7 @@
 import axios from 'axios';
 import { AppConfig } from '../../config/app.config';
 
+// Strip versioned path suffix (e.g. /v1) if present; backend mounts routes at /api/*
 const API_BASE_URL = AppConfig.api.baseUrl.replace(/\/v\d+$/, '');
 
 export interface ReverseGeocodeResult {

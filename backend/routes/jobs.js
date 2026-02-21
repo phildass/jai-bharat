@@ -85,8 +85,9 @@ router.get('/', jobsLimiter, async (req, res) => {
     let idx = 1;
 
     if (q && q.trim()) {
+      const safeQ = q.trim().slice(0, 200); // cap query length to prevent abuse
       conditions.push(`(search_vector @@ plainto_tsquery('english', $${idx}) OR title ILIKE $${idx + 1})`);
-      params.push(q.trim(), `%${q.trim()}%`);
+      params.push(safeQ, `%${safeQ}%`);
       idx += 2;
     }
     if (state)         { conditions.push(`state ILIKE $${idx++}`);         params.push(state); }
