@@ -50,7 +50,7 @@ export default function OTPVerificationScreen({ userId, onSuccess }: OTPVerifica
 
   const contactSupport = () => {
     Linking.openURL(
-      `mailto:support@iiskills.cloud?subject=OTP Verification Issue&body=User ID: ${userId}`
+      `mailto:support@jaibharat.cloud?subject=OTP Verification Issue&body=User ID: ${userId}`
     );
   };
 
@@ -103,7 +103,7 @@ export default function OTPVerificationScreen({ userId, onSuccess }: OTPVerifica
           <TouchableOpacity style={styles.secondaryButton} onPress={contactSupport}>
             <Text style={styles.secondaryButtonText}>📧 Contact Support</Text>
           </TouchableOpacity>
-          <Text style={styles.supportEmail}>support@iiskills.cloud</Text>
+          <Text style={styles.supportEmail}>support@jaibharat.cloud</Text>
         </View>
       </View>
     </View>

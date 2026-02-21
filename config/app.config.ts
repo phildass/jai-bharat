@@ -122,7 +122,7 @@ export const AppConfig = {
     trialDurationHours: 24,
     paymentUrl: process.env.PAYMENT_URL || 'https://aienter.in/payments/jaibharatpay',
     paymentAmount: 116.82, // ₹99 + 18% GST
-    supportEmail: 'support@iiskills.cloud',
+    supportEmail: 'support@jaibharat.cloud',
     otpExpiryMinutes: 10,
     otpMaxAttempts: 5,
   },

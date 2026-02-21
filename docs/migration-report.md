@@ -1,27 +1,27 @@
-# Migration Report: iiskills-cloud Apps to Jai Bharat
+# Module Stub Report: Jai Bharat Independent Codebase
 
 ## Overview
 
-This document describes the migration of Learn Govt Jobs and Learn IAS apps from the iiskills-cloud repository to the Jai Bharat super-app platform.
+Jai Bharat is an independent codebase hosted at [jaibharat.cloud](https://jaibharat.cloud). It is not derived from, nor dependent on, any external repository. The platform is a modular super-app built from the ground up for India's government-job seekers.
 
-## Migration Status
+## Codebase Status
 
-### Source Repository
-- **Repository**: iiskills-cloud (not accessible in current environment)
-- **Location**: apps-backup directory
-- **Apps to Migrate**:
-  1. Learn Govt Jobs
-  2. Learn IAS
-
-### Target Repository
+### Repository
 - **Repository**: phildass/jai-bharat
 - **Structure**: Modular super-app architecture
+- **Independence**: Fully self-contained; no external source repository dependency
 
-## Migration Approach
+## Module Stub Rationale
 
-Since the source repository (iiskills-cloud) was not accessible during implementation, we created a **modular architecture framework** that is ready to receive the apps when they become available.
+Some feature modules (e.g., **Learn Govt Jobs** and **Learn IAS**) currently exist as **architectural stubs**. This is an intentional design choice:
 
-### Architecture Created
+- The shared service layer (Auth, Content Sync, Progress Sync, etc.) is implemented and production-ready.
+- Module stubs define the `ModuleConfig` interface and route structure so that content and UI can be added incrementally without reworking the architecture.
+- Stub modules allow the team to validate the overall app shell, navigation, and service wiring before committing to full content development.
+
+This approach keeps the codebase clean and avoids shipping incomplete features while still proving the architectural foundation.
+
+### Architecture in Place
 
 1. **Module Interface System**
    - Defined `ModuleConfig` interface for all modules
@@ -42,9 +42,34 @@ Since the source repository (iiskills-cloud) was not accessible during implement
    - Learn IAS module structure
    - Both ready to receive actual implementation
 
-## Integration Options
+## Future Module Integration Checklist
 
-When the apps become available, there are three integration paths:
+When a new module is ready to be developed and integrated into Jai Bharat, use the checklist below to track progress.
+
+### Technical Requirements
+- [ ] Uses React Native or can be converted
+- [ ] Compatible with React 18.x
+- [ ] No conflicting dependencies
+- [ ] Code passes linting
+- [ ] Tests pass
+
+### Integration Requirements
+- [ ] Implements `ModuleConfig` interface
+- [ ] Uses `authService` for authentication
+- [ ] Uses `contentSyncService` for shared content
+- [ ] Uses `progressSyncService` for progress tracking
+- [ ] Follows navigation patterns
+
+### Quality Requirements
+- [ ] Code documented
+- [ ] Tests added
+- [ ] Performance optimized
+- [ ] Accessibility compliant
+- [ ] Security audited
+
+## Module Integration Paths
+
+When a new module is ready, there are three integration paths:
 
 ### Option 1: Direct Integration (Recommended if Same Stack)
 
@@ -90,42 +115,18 @@ When the apps become available, there are three integration paths:
 
 **Effort**: 2-3 months per module
 
-## Module Requirements Checklist
 
-For each module being integrated:
+## Content Onboarding Plan
 
-### Technical Requirements
-- [ ] Uses React Native or can be converted
-- [ ] Compatible with React 18.x
-- [ ] No conflicting dependencies
-- [ ] Code passes linting
-- [ ] Tests pass
+### Module Content Areas
 
-### Integration Requirements
-- [ ] Implements `ModuleConfig` interface
-- [ ] Uses `authService` for authentication
-- [ ] Uses `contentSyncService` for shared content
-- [ ] Uses `progressSyncService` for progress tracking
-- [ ] Follows navigation patterns
-
-### Quality Requirements
-- [ ] Code documented
-- [ ] Tests added
-- [ ] Performance optimized
-- [ ] Accessibility compliant
-- [ ] Security audited
-
-## Data Migration
-
-### Content Migration
-
-**Learn Govt Jobs Content:**
+**Learn Govt Jobs:**
 - SSC question banks → Content Sync Service
 - Banking materials → Content Sync Service
 - Railways resources → Content Sync Service
 - Police prep materials → Content Sync Service
 
-**Learn IAS Content:**
+**Learn IAS:**
 - Prelims materials → Content Sync Service
 - Mains resources → Content Sync Service
 - Essay prompts → Content Sync Service
@@ -157,9 +158,8 @@ For each module being integrated:
 ## Timeline
 
 ### Phase 1: Preparation (Week 1-2)
-- [ ] Access iiskills-cloud repository
-- [ ] Audit Learn Govt Jobs codebase
-- [ ] Audit Learn IAS codebase
+- [ ] Finalise module scope for Learn Govt Jobs
+- [ ] Finalise module scope for Learn IAS
 - [ ] Identify integration approach
 - [ ] Document dependencies
 
@@ -232,10 +232,10 @@ For each module being integrated:
 
 ## Next Steps
 
-1. **Immediate**: Get access to iiskills-cloud repository
-2. **Week 1**: Audit apps and finalize integration approach
-3. **Week 2**: Begin integration of first module
-4. **Week 8**: Complete integration of both modules
+1. **Immediate**: Define content roadmap for Learn Govt Jobs and Learn IAS modules
+2. **Week 1**: Finalise integration approach and module scope
+3. **Week 2**: Begin implementation of first module
+4. **Week 8**: Complete implementation of both modules
 5. **Week 14**: Production deployment
 
 ## Contact
@@ -248,5 +248,5 @@ For migration support:
 ---
 
 **Created**: February 2026
-**Status**: Framework Ready, Awaiting Source Apps
-**Next Review**: When apps become available
+**Status**: Framework Ready, Module Content Pending
+**Next Review**: When module content development begins
