@@ -16,6 +16,9 @@ const crypto = require('crypto');
 const { Pool } = require('pg');
 const rateLimit = require('express-rate-limit');
 
+const geoRouter = require('./routes/geo');
+const jobsRouter = require('./routes/jobs');
+
 // ---------------------------------------------------------------------------
 // Database connection
 // ---------------------------------------------------------------------------
@@ -40,6 +43,12 @@ const OTP_MAX_ATTEMPTS = 5;
 // ---------------------------------------------------------------------------
 const app = express();
 app.use(express.json());
+
+// ---------------------------------------------------------------------------
+// Jobs Near Me routes
+// ---------------------------------------------------------------------------
+app.use('/api/geo', geoRouter);
+app.use('/api/jobs', jobsRouter);
 
 // ---------------------------------------------------------------------------
 // Rate limiters
