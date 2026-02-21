@@ -9,7 +9,10 @@
     "ios": "react-native run-ios",
     "test": "jest",
     "lint": "eslint .",
-    "build": "react-native bundle"
+    "build": "react-native bundle",
+    "backend:dev": "cd backend && npm run dev",
+    "backend:start": "cd backend && npm run start",
+    "backend:seed": "cd backend && npm run seed"
   },
   "keywords": [
     "government-jobs",
@@ -35,7 +38,8 @@
     "axios": "^1.4.0",
     "@react-native-async-storage/async-storage": "^1.19.0",
     "react-native-voice": "^3.2.4",
-    "react-native-geolocation-service": "^5.3.1"
+    "react-native-geolocation-service": "^5.3.1",
+    "react-native-maps": "^1.7.1"
   },
   "devDependencies": {
     "@babel/core": "^7.22.0",

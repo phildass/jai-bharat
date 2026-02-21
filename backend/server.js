@@ -12,9 +12,13 @@
 require('dotenv').config({ path: '../.env' });
 
 const express = require('express');
+const cors = require('cors');
 const crypto = require('crypto');
 const { Pool } = require('pg');
 const rateLimit = require('express-rate-limit');
+
+const jobsRouter = require('./routes/jobs');
+const geoRouter = require('./routes/geo');
 
 // ---------------------------------------------------------------------------
 // Database connection
@@ -39,7 +43,14 @@ const OTP_MAX_ATTEMPTS = 5;
 // Express app
 // ---------------------------------------------------------------------------
 const app = express();
+app.use(cors());
 app.use(express.json());
+
+// ---------------------------------------------------------------------------
+// Jobs & Geo routes
+// ---------------------------------------------------------------------------
+app.use('/api/jobs', jobsRouter);
+app.use('/api/geo', geoRouter);
 
 // ---------------------------------------------------------------------------
 // Rate limiters

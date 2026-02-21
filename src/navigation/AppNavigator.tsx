@@ -1,38 +1,44 @@
 /**
  * App Navigator
  * Top-level navigation for Jai Bharat: Core, Learn Govt Jobs, Learn IAS
- * TODO: Wire up full screen components for each module
  */
 
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
+import JobsSearchScreen from '../screens/jobs/JobsSearchScreen';
+import JobDetailScreen from '../screens/jobs/JobDetailScreen';
+import JobsNearMeScreen from '../screens/jobs/JobsNearMeScreen';
+
+const Stack = createStackNavigator();
 
 export default function AppNavigator() {
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>🇮🇳 Jai Bharat</Text>
-      <Text style={styles.subtitle}>India Govt. Jobs. Everywhere. Anywhere. Every Job.</Text>
-    </View>
+    <NavigationContainer>
+      <Stack.Navigator
+        initialRouteName="JobsSearch"
+        screenOptions={{
+          headerStyle: { backgroundColor: '#FF6B35' },
+          headerTintColor: '#FFFFFF',
+          headerTitleStyle: { fontWeight: '700' },
+        }}
+      >
+        <Stack.Screen
+          name="JobsSearch"
+          component={JobsSearchScreen}
+          options={{ title: '🇮🇳 Govt Jobs' }}
+        />
+        <Stack.Screen
+          name="JobDetail"
+          component={JobDetailScreen}
+          options={{ title: 'Job Details' }}
+        />
+        <Stack.Screen
+          name="JobsNearMe"
+          component={JobsNearMeScreen}
+          options={{ title: '📍 Jobs Near Me' }}
+        />
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#FF6B35',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-    paddingHorizontal: 32,
-  },
-});
