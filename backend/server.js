@@ -12,6 +12,8 @@
 require('dotenv').config({ path: '../.env' });
 
 const express = require('express');
+const cors = require('cors');
+const morgan = require('morgan');
 const crypto = require('crypto');
 const { Pool } = require('pg');
 const rateLimit = require('express-rate-limit');
@@ -34,14 +36,33 @@ const PAYMENT_BASE_URL = process.env.PAYMENT_URL || 'https://aienter.in/payments
 const PAYMENT_AMOUNT = parseFloat(process.env.PAYMENT_AMOUNT || '116.82');
 const AIENTER_WEBHOOK_SECRET = process.env.AIENTER_WEBHOOK_SECRET || '';
 const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || 'support@jaibharat.cloud';
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 const OTP_EXPIRY_MINUTES = 10;
 const OTP_MAX_ATTEMPTS = 5;
+
+// ---------------------------------------------------------------------------
+// CORS allowed origins
+// ---------------------------------------------------------------------------
+const CORS_ORIGINS = [
+  'https://app.jaibharat.cloud',
+  'https://jaibharat.cloud',
+  /^http:\/\/localhost(:\d+)?$/,
+  /^http:\/\/127\.0\.0\.1(:\d+)?$/,
+];
 
 // ---------------------------------------------------------------------------
 // Express app
 // ---------------------------------------------------------------------------
 const app = express();
+
+app.use(cors({
+  origin: CORS_ORIGINS,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+}));
+
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 app.use(express.json());
 
 // ---------------------------------------------------------------------------
@@ -49,6 +70,14 @@ app.use(express.json());
 // ---------------------------------------------------------------------------
 app.use('/api/geo', geoRouter);
 app.use('/api/jobs', jobsRouter);
+
+// ---------------------------------------------------------------------------
+// GET /health
+// ---------------------------------------------------------------------------
+const { version } = require('./package.json');
+app.get('/health', (_req, res) => {
+  res.json({ ok: true, version, timestamp: new Date().toISOString() });
+});
 
 // ---------------------------------------------------------------------------
 // Rate limiters
@@ -345,6 +374,18 @@ app.post('/api/subscription/verify-otp', otpLimiter, async (req, res) => {
     console.error('OTP verification error:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
+});
+
+// ---------------------------------------------------------------------------
+// Centralized error handler
+// ---------------------------------------------------------------------------
+// eslint-disable-next-line no-unused-vars
+app.use((err, _req, res, _next) => {
+  console.error('Unhandled error:', err);
+  const isProd = process.env.NODE_ENV === 'production';
+  res.status(err.status || 500).json({
+    error: isProd ? 'Internal server error' : (err.message || 'Internal server error'),
+  });
 });
 
 // ---------------------------------------------------------------------------

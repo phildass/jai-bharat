@@ -9,7 +9,14 @@
     "ios": "react-native run-ios",
     "test": "jest",
     "lint": "eslint .",
-    "build": "react-native bundle"
+    "build": "react-native bundle",
+    "api:dev": "cd backend && npm run dev",
+    "api:start": "cd backend && npm run start",
+    "api:seed": "cd backend && npm run seed",
+    "api:smoke": "node scripts/smoke-test.js",
+    "web:dev": "cd apps/web && npm run dev",
+    "web:build": "cd apps/web && npm run build",
+    "web:start": "cd apps/web && npm run start"
   },
   "keywords": [
     "government-jobs",

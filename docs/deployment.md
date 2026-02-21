@@ -2,26 +2,238 @@
 
 ## Overview
 
-This guide covers deployment of the Jai Bharat Super-App to production.
+This guide covers deployment of the Jai Bharat Super-App to production:
 
-## Prerequisites
-
-### Required Accounts
-- [ ] Google Cloud Platform (or AWS/Azure)
-- [ ] GitHub account (for CI/CD)
-- [ ] Apple Developer Program (for iOS)
-- [ ] Google Play Console (for Android)
-- [ ] Domain: jaibharat.cloud
-
-### Required Tools
-- [ ] Node.js >= 16.x
-- [ ] Docker & Docker Compose
-- [ ] Kubernetes CLI (kubectl)
-- [ ] Git
-- [ ] Android Studio
-- [ ] Xcode (for iOS, macOS only)
+| Service | Domain |
+|---------|--------|
+| **Web App** (Next.js) | https://app.jaibharat.cloud |
+| **Backend API** (Node.js/Express) | https://api.jaibharat.cloud |
+| **Mobile App** (React Native) | Android / iOS stores |
 
 ## Architecture
+
+```
+                   ┌────────────────────────────────┐
+                   │   app.jaibharat.cloud (Web)    │
+                   │     Next.js – apps/web          │
+                   └────────────────┬───────────────┘
+                                    │ NEXT_PUBLIC_API_BASE_URL
+                   ┌────────────────▼───────────────┐
+React Native  ───► │  api.jaibharat.cloud (API)     │
+                   │    Node/Express – /backend      │
+                   └────────────────┬───────────────┘
+                                    │ SUPABASE_SERVICE_ROLE_KEY (server only)
+                                    │ LOCATIONIQ_API_KEY (server only)
+                   ┌────────────────▼───────────────┐
+                   │         Supabase DB/Auth        │
+                   └────────────────────────────────┘
+```
+
+## Environment Variables
+
+Copy `.env.example` to `.env` in the repo root and fill in values.
+
+### Backend (`/backend`)
+
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | PostgreSQL connection string (from Supabase → Settings → Database) |
+| `SUPABASE_URL` | Supabase project URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | **Server-only** – never expose to browser/mobile |
+| `LOCATIONIQ_API_KEY` | Reverse geocoding – never expose to client |
+| `PORT` | Default `8080` |
+| `NODE_ENV` | `production` in prod |
+| `AIENTER_WEBHOOK_SECRET` | Webhook HMAC secret |
+
+### Web App (`/apps/web`)
+
+Create `/apps/web/.env.local` (copy from `.env.local.example`):
+
+| Variable | Description |
+|----------|-------------|
+| `NEXT_PUBLIC_API_BASE_URL` | Browser-facing API URL (safe to expose) |
+
+## Quick Start (Local Development)
+
+```bash
+# 1. Clone and install
+git clone https://github.com/phildass/jai-bharat
+cd jai-bharat
+cp .env.example .env  # fill in values
+
+# 2. Start backend API (http://localhost:8080)
+npm run api:dev
+
+# 3. Start web app (http://localhost:3000)
+cp apps/web/.env.local.example apps/web/.env.local
+npm run web:dev
+
+# 4. Seed sample jobs
+npm run api:seed
+
+# 5. Smoke test
+npm run api:smoke
+```
+
+## Backend Deployment (api.jaibharat.cloud)
+
+### Railway / Render / Fly.io
+
+```bash
+# Set environment variables on the platform, then:
+cd backend
+npm start    # node server.js
+```
+
+Healthcheck endpoint: `GET /health` → `{ "ok": true, "version": "...", "timestamp": "..." }`
+
+### Docker
+
+```dockerfile
+FROM node:22-alpine
+WORKDIR /app
+COPY backend/package*.json ./
+RUN npm ci --omit=dev
+COPY backend/ ./
+EXPOSE 8080
+CMD ["node", "server.js"]
+```
+
+```bash
+docker build -t jai-bharat-api .
+docker run -p 8080:8080 --env-file .env jai-bharat-api
+```
+
+### CORS
+
+The backend allows:
+- `https://app.jaibharat.cloud`
+- `https://jaibharat.cloud`
+- `http://localhost:*` (dev only)
+
+## Web App Deployment (app.jaibharat.cloud)
+
+### Vercel (recommended)
+
+```bash
+cd apps/web
+npx vercel deploy --prod
+
+# Set environment variable in Vercel dashboard:
+# NEXT_PUBLIC_API_BASE_URL = https://api.jaibharat.cloud
+```
+
+### Self-hosted (Node.js)
+
+```bash
+cd apps/web
+npm run build
+npm start        # next start -p 3000
+```
+
+### Self-hosted (Static export + CDN)
+
+```bash
+# In apps/web/next.config.js, add: output: 'export'
+npm run build
+# Upload apps/web/out/ to S3, GCS, or Cloudflare Pages
+```
+
+## Supabase Setup
+
+```bash
+# Install Supabase CLI
+npm install -g supabase
+
+# Link to your project
+supabase link --project-ref <your-project-ref>
+
+# Run migrations
+supabase db push
+
+# Or apply migrations manually via Supabase SQL editor:
+# Copy contents of supabase/migrations/001_initial_schema.sql
+```
+
+### Database URL
+
+From Supabase dashboard → Settings → Database → Connection string.
+Use the **pooler** connection string for production (port 6543 with pgBouncer).
+
+## Root Convenience Scripts
+
+```bash
+npm run api:dev      # Start backend with nodemon
+npm run api:start    # Start backend (production)
+npm run api:seed     # Seed 40 sample government jobs
+npm run api:smoke    # Quick smoke test (/health + /api/jobs)
+npm run web:dev      # Start Next.js web app in dev mode
+npm run web:build    # Build Next.js web app
+npm run web:start    # Start Next.js web app (production)
+```
+
+## SSL/TLS
+
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name api.jaibharat.cloud;
+
+    ssl_certificate /etc/letsencrypt/live/jaibharat.cloud/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/jaibharat.cloud/privkey.pem;
+
+    location / {
+        proxy_pass http://localhost:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+server {
+    listen 443 ssl http2;
+    server_name app.jaibharat.cloud;
+
+    ssl_certificate /etc/letsencrypt/live/jaibharat.cloud/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/jaibharat.cloud/privkey.pem;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+
+## Security Checklist
+
+- [x] `SUPABASE_SERVICE_ROLE_KEY` only in backend environment, never in browser bundle
+- [x] `LOCATIONIQ_API_KEY` only in backend environment, never in browser bundle
+- [x] CORS restricted to known origins
+- [x] Rate limiting on all API endpoints
+- [x] Input validation on all query parameters
+- [x] HTTPS / SSL certificates
+- [x] Security headers (X-Content-Type-Options, X-Frame-Options, Referrer-Policy)
+
+## Health Check / Monitoring
+
+```bash
+# API health
+curl https://api.jaibharat.cloud/health
+# → { "ok": true, "version": "1.0.0", "timestamp": "..." }
+
+# Jobs endpoint
+curl "https://api.jaibharat.cloud/api/jobs?pageSize=1"
+
+# Geo proxy
+curl "https://api.jaibharat.cloud/api/geo/reverse?lat=28.6139&lon=77.2090"
+```
+
+---
+
+**Last Updated**: February 2026  
+**Version**: 2.0
 
 ```
 ┌─────────────────────────────────────┐
