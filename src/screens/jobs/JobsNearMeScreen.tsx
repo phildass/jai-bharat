@@ -1,241 +1,270 @@
 /**
- * Jobs Near Me Screen
+ * JobsNearMeScreen
+ * Shows government jobs near the user's current location using a Leaflet map
+ * rendered inside a WebView alongside a scrollable list.
  *
- * Flow:
- *  1. Prompt user to enable location
- *  2. Get browser/device geolocation
- *  3. Reverse-geocode via /api/geo/reverse (server proxy – API key stays on server)
- *  4. Fetch nearby government jobs via /api/jobs/nearby
- *  5. Display jobs list with distance; allow radius/filter changes
+ * Map: Leaflet (CDN) embedded via react-native-webview
+ * Geocoding: calls /api/geo/reverse server-side (LOCATIONIQ_API_KEY never exposed)
+ * Nearby jobs: calls /api/jobs/nearby
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
-  View,
+  ActivityIndicator,
+  FlatList,
+  Platform,
+  StyleSheet,
   Text,
   TouchableOpacity,
-  FlatList,
-  ActivityIndicator,
-  StyleSheet,
-  Linking,
-  Platform,
+  View,
 } from 'react-native';
 import Geolocation from 'react-native-geolocation-service';
-import { reverseGeocode, fetchNearbyJobs, Job } from '../../services/jobsService';
+import { WebView } from 'react-native-webview';
 
-type RadiusKm = 10 | 25 | 50 | 100;
+import { NearbyJob, getNearbyJobs, reverseGeocode } from '../../services/jobsService';
 
-const RADIUS_OPTIONS: RadiusKm[] = [10, 25, 50, 100];
+const RADIUS_OPTIONS: Array<10 | 25 | 50 | 100> = [10, 25, 50, 100];
 
-type ScreenState = 'idle' | 'locating' | 'loading' | 'loaded' | 'error';
+/**
+ * Generates the Leaflet HTML page with markers for nearby jobs.
+ */
+/** Escape a string for safe inclusion in HTML content */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
 
-export default function JobsNearMeScreen() {
-  const [screenState, setScreenState] = useState<ScreenState>('idle');
-  const [errorMsg, setErrorMsg] = useState('');
-  const [placeLabel, setPlaceLabel] = useState('');
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [total, setTotal] = useState(0);
-  const [radiusKm, setRadiusKm] = useState<RadiusKm>(25);
+function buildLeafletHTML(
+  userLat: number,
+  userLon: number,
+  jobs: NearbyJob[],
+  selectedId: number | null
+): string {
+  const markers = jobs
+    .filter((j) => j.lat !== null && j.lon !== null)
+    .map((j) => {
+      const color = j.id === selectedId ? 'red' : 'blue';
+      const popupHtml = `<b>${escapeHtml(j.title)}</b><br>${escapeHtml(j.organisation)}<br>${j.distanceKm} km away`;
+      return `L.circleMarker([${j.lat}, ${j.lon}], {
+        radius: 8,
+        color: '${color}',
+        fillColor: '${color}',
+        fillOpacity: 0.7
+      }).addTo(map).bindPopup(${JSON.stringify(popupHtml)});`;
+    })
+    .join('\n');
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <style>html,body,#map{height:100%;margin:0;padding:0;}</style>
+</head>
+<body>
+  <div id="map"></div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    var map = L.map('map').setView([${userLat}, ${userLon}], 11);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+    L.marker([${userLat}, ${userLon}]).addTo(map)
+      .bindPopup('<b>You are here</b>').openPopup();
+    ${markers}
+  </script>
+</body>
+</html>`;
+}
+
+interface Props {
+  navigation?: { navigate: (screen: string, params?: Record<string, unknown>) => void };
+}
+
+export default function JobsNearMeScreen({ navigation }: Props) {
+  const [locationLabel, setLocationLabel] = useState('');
   const [userLat, setUserLat] = useState<number | null>(null);
   const [userLon, setUserLon] = useState<number | null>(null);
+  const [radius, setRadius] = useState<10 | 25 | 50 | 100>(25);
+  const [jobs, setJobs] = useState<NearbyJob[]>([]);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const webViewRef = useRef<WebView>(null);
 
-  // ── Request location & load jobs ──────────────────────────────────────────
-  const enableLocation = useCallback(() => {
-    setScreenState('locating');
-    setErrorMsg('');
+  const fetchLocation = useCallback(() => {
+    setLoading(true);
+    setError('');
 
     Geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
         setUserLat(latitude);
         setUserLon(longitude);
 
         try {
-          setScreenState('loading');
-
-          // Reverse-geocode (proxied through our server, key never on client)
-          let label = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
-          try {
-            const geo = await reverseGeocode(latitude, longitude);
-            label = [geo.city, geo.district, geo.state].filter(Boolean).join(', ') || geo.displayName || label;
-          } catch {
-            // Non-fatal – use raw coordinates as label
-          }
-          setPlaceLabel(label);
-
-          // Fetch nearby jobs
-          const result = await fetchNearbyJobs({ lat: latitude, lon: longitude, radiusKm });
-          setJobs(result.jobs);
-          setTotal(result.total);
-          setScreenState('loaded');
-        } catch (err: any) {
-          setErrorMsg(err.message || 'Failed to load jobs. Please try again.');
-          setScreenState('error');
+          const geo = await reverseGeocode(latitude, longitude);
+          setLocationLabel(geo.display_name || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+        } catch {
+          setLocationLabel(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
         }
+
+        try {
+          const data = await getNearbyJobs(latitude, longitude, radius);
+          setJobs(data.results);
+        } catch {
+          setError('Failed to load nearby jobs.');
+        }
+        setLoading(false);
       },
       (err) => {
-        const messages: Record<number, string> = {
-          1: 'Location permission denied. Please allow location access in your device settings.',
-          2: 'Location unavailable. Please check your GPS/network.',
-          3: 'Location request timed out. Please try again.',
-        };
-        setErrorMsg(messages[err.code] || 'Failed to get location.');
-        setScreenState('error');
+        setError(`Location error: ${err.message}`);
+        setLoading(false);
       },
-      {
-        enableHighAccuracy: false,
-        timeout: 15000,
-        maximumAge: 60000,
-      }
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 }
     );
-  }, [radiusKm]);
+  }, [radius]);
 
-  // ── Reload when radius changes ────────────────────────────────────────────
-  const changeRadius = useCallback(
-    async (newRadius: RadiusKm) => {
-      setRadiusKm(newRadius);
-      if (userLat === null || userLon === null) return;
+  const fetchNearby = useCallback(async () => {
+    if (userLat === null || userLon === null) return;
+    setLoading(true);
+    setError('');
+    try {
+      const data = await getNearbyJobs(userLat, userLon, radius);
+      setJobs(data.results);
+    } catch {
+      setError('Failed to load nearby jobs.');
+    } finally {
+      setLoading(false);
+    }
+  }, [userLat, userLon, radius]);
 
-      setScreenState('loading');
-      try {
-        const result = await fetchNearbyJobs({ lat: userLat, lon: userLon, radiusKm: newRadius });
-        setJobs(result.jobs);
-        setTotal(result.total);
-        setScreenState('loaded');
-      } catch (err: any) {
-        setErrorMsg(err.message || 'Failed to reload jobs.');
-        setScreenState('error');
-      }
-    },
-    [userLat, userLon]
+  const leafletHTML =
+    userLat !== null && userLon !== null
+      ? buildLeafletHTML(userLat, userLon, jobs, selectedId)
+      : null;
+
+  const renderJob = ({ item }: { item: NearbyJob }) => (
+    <TouchableOpacity
+      style={[styles.card, item.id === selectedId && styles.cardSelected]}
+      onPress={() => {
+        setSelectedId(item.id);
+        navigation?.navigate('JobDetail', { jobId: item.id });
+      }}
+      accessibilityRole="button"
+      accessibilityLabel={item.title}
+    >
+      <View style={styles.distanceBadge}>
+        <Text style={styles.distanceText}>{item.distanceKm} km</Text>
+      </View>
+      <Text style={styles.jobTitle} numberOfLines={2}>{item.title}</Text>
+      <Text style={styles.orgName}>{item.organisation}</Text>
+      {item.location_label ? (
+        <Text style={styles.location}>📍 {item.location_label}</Text>
+      ) : null}
+      {item.apply_end_date ? (
+        <Text style={styles.deadline}>⏰ Last date: {item.apply_end_date}</Text>
+      ) : null}
+    </TouchableOpacity>
   );
 
-  // ── Render helpers ────────────────────────────────────────────────────────
-  const renderJobCard = ({ item }: { item: Job }) => (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <View style={styles.sourceBadge}>
-          <Text style={styles.sourceBadgeText}>{item.source}</Text>
-        </View>
-        <Text style={styles.distanceText}>{item.distance_km} km away</Text>
-      </View>
-
-      <Text style={styles.jobTitle}>{item.title}</Text>
-      <Text style={styles.department}>{item.department}</Text>
-      <Text style={styles.locationText}>📍 {item.location_text}</Text>
-
-      {item.last_date && (
-        <Text style={styles.lastDate}>
-          ⏰ Last date: {new Date(item.last_date).toLocaleDateString('en-IN')}
-        </Text>
-      )}
-
-      <TouchableOpacity
-        style={styles.applyButton}
-        onPress={() => Linking.openURL(item.apply_url)}
-        accessibilityLabel={`Apply for ${item.title}`}
-      >
-        <Text style={styles.applyButtonText}>Apply Now →</Text>
-      </TouchableOpacity>
-    </View>
-  );
-
-  // ── Idle state ────────────────────────────────────────────────────────────
-  if (screenState === 'idle' || screenState === 'error') {
-    return (
-      <View style={styles.centeredContainer}>
-        <Text style={styles.heroEmoji}>📍</Text>
-        <Text style={styles.heroTitle}>Jobs Near Me</Text>
-        <Text style={styles.heroSubtitle}>
-          Discover government job openings near your current location – UPSC, SSC, State PSC, RRB, PSUs and more.
-        </Text>
-
-        {screenState === 'error' && (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{errorMsg}</Text>
-          </View>
-        )}
-
-        <TouchableOpacity style={styles.enableButton} onPress={enableLocation}>
-          <Text style={styles.enableButtonText}>
-            {screenState === 'error' ? '🔄 Try Again' : '📡 Enable Location'}
-          </Text>
-        </TouchableOpacity>
-
-        <Text style={styles.privacyNote}>
-          🔒 Your location is used only for this session and is never stored.
-        </Text>
-      </View>
-    );
-  }
-
-  // ── Locating / loading ────────────────────────────────────────────────────
-  if (screenState === 'locating' || screenState === 'loading') {
-    return (
-      <View style={styles.centeredContainer}>
-        <ActivityIndicator size="large" color="#FF6B35" />
-        <Text style={styles.loadingText}>
-          {screenState === 'locating' ? 'Getting your location…' : 'Loading nearby jobs…'}
-        </Text>
-      </View>
-    );
-  }
-
-  // ── Loaded ────────────────────────────────────────────────────────────────
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Jobs Near Me</Text>
-        <Text style={styles.headerSubtitle} numberOfLines={1}>
-          📍 {placeLabel}
-        </Text>
-      </View>
+      {/* Map */}
+      {leafletHTML ? (
+        <WebView
+          ref={webViewRef}
+          style={styles.map}
+          originWhitelist={['*']}
+          source={{ html: leafletHTML }}
+          javaScriptEnabled
+        />
+      ) : (
+        <View style={styles.mapPlaceholder}>
+          <Text style={styles.mapPlaceholderText}>🗺️ Map will appear here</Text>
+        </View>
+      )}
 
-      {/* Map placeholder */}
-      <View style={styles.mapPlaceholder}>
-        <Text style={styles.mapPlaceholderEmoji}>🗺️</Text>
-        <Text style={styles.mapPlaceholderText}>
-          {userLat?.toFixed(4)}, {userLon?.toFixed(4)}
-        </Text>
-        <Text style={styles.mapPlaceholderHint}>Map view requires react-native-maps setup</Text>
-      </View>
+      {/* Controls */}
+      <View style={styles.controls}>
+        {/* Location label */}
+        {locationLabel ? (
+          <Text style={styles.locationLabel} numberOfLines={1}>
+            📍 {locationLabel}
+          </Text>
+        ) : null}
 
-      {/* Radius selector */}
-      <View style={styles.radiusContainer}>
-        <Text style={styles.radiusLabel}>Radius:</Text>
-        {RADIUS_OPTIONS.map((r) => (
+        {/* Enable location button */}
+        {!userLat && (
           <TouchableOpacity
-            key={r}
-            style={[styles.radiusChip, radiusKm === r && styles.radiusChipActive]}
-            onPress={() => changeRadius(r)}
+            style={styles.enableButton}
+            onPress={fetchLocation}
+            disabled={loading}
+            accessibilityRole="button"
           >
-            <Text style={[styles.radiusChipText, radiusKm === r && styles.radiusChipTextActive]}>
-              {r} km
-            </Text>
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.enableButtonText}>📍 Enable Location</Text>
+            )}
           </TouchableOpacity>
-        ))}
+        )}
+
+        {/* Radius selector */}
+        {userLat !== null && (
+          <View style={styles.radiusRow}>
+            <Text style={styles.radiusLabel}>Radius:</Text>
+            {RADIUS_OPTIONS.map((r) => (
+              <TouchableOpacity
+                key={r}
+                style={[styles.radiusChip, r === radius && styles.radiusChipActive]}
+                onPress={() => {
+                  setRadius(r);
+                }}
+                accessibilityRole="button"
+              >
+                <Text style={[styles.radiusChipText, r === radius && styles.radiusChipTextActive]}>
+                  {r} km
+                </Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity style={styles.refreshButton} onPress={fetchNearby} disabled={loading}>
+              <Text style={styles.refreshButtonText}>🔄</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
-      {/* Results summary */}
-      <Text style={styles.resultsSummary}>
-        {total} job{total !== 1 ? 's' : ''} within {radiusKm} km
-      </Text>
+      {/* Error */}
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       {/* Jobs list */}
-      {jobs.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyEmoji}>🔍</Text>
-          <Text style={styles.emptyText}>No jobs found within {radiusKm} km.</Text>
-          <Text style={styles.emptyHint}>Try expanding the radius.</Text>
-        </View>
+      {loading && !jobs.length ? (
+        <ActivityIndicator style={styles.loader} size="large" color="#FF6B35" />
       ) : (
         <FlatList
           data={jobs}
-          keyExtractor={(item) => item.id}
-          renderItem={renderJobCard}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
+          keyExtractor={(item) => String(item.id)}
+          renderItem={renderJob}
+          ListHeaderComponent={
+            jobs.length > 0 ? (
+              <Text style={styles.resultsCount}>
+                {jobs.length} job{jobs.length !== 1 ? 's' : ''} within {radius} km
+              </Text>
+            ) : null
+          }
+          ListEmptyComponent={
+            userLat !== null && !loading ? (
+              <Text style={styles.emptyText}>
+                No open jobs found within {radius} km. Try a larger radius.
+              </Text>
+            ) : null
+          }
         />
       )}
     </View>
@@ -245,232 +274,151 @@ export default function JobsNearMeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F9FAFB',
   },
-  centeredContainer: {
-    flex: 1,
-    backgroundColor: '#F3F4F6',
+  map: {
+    height: Platform.OS === 'ios' ? 280 : 260,
+  },
+  mapPlaceholder: {
+    height: Platform.OS === 'ios' ? 280 : 260,
+    backgroundColor: '#E5E7EB',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 32,
   },
-  heroEmoji: {
-    fontSize: 64,
-    marginBottom: 16,
+  mapPlaceholderText: {
+    fontSize: 16,
+    color: '#9CA3AF',
   },
-  heroTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1E3A8A',
-    marginBottom: 12,
-    textAlign: 'center',
+  controls: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    gap: 6,
   },
-  heroSubtitle: {
-    fontSize: 15,
+  locationLabel: {
+    fontSize: 12,
     color: '#6B7280',
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 32,
-  },
-  errorBox: {
-    backgroundColor: '#FEE2E2',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-    width: '100%',
-  },
-  errorText: {
-    color: '#DC2626',
-    fontSize: 14,
-    textAlign: 'center',
   },
   enableButton: {
     backgroundColor: '#FF6B35',
-    paddingVertical: 14,
-    paddingHorizontal: 40,
-    borderRadius: 12,
-    marginBottom: 16,
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
   },
   enableButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 15,
   },
-  privacyNote: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    textAlign: 'center',
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#6B7280',
-  },
-  header: {
-    backgroundColor: '#1E3A8A',
-    paddingTop: Platform.OS === 'ios' ? 56 : 16,
-    paddingBottom: 16,
-    paddingHorizontal: 16,
-  },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: 'white',
-  },
-  headerSubtitle: {
-    fontSize: 13,
-    color: '#BFDBFE',
-    marginTop: 4,
-  },
-  mapPlaceholder: {
-    height: 120,
-    backgroundColor: '#DBEAFE',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#BFDBFE',
-  },
-  mapPlaceholderEmoji: {
-    fontSize: 32,
-  },
-  mapPlaceholderText: {
-    fontSize: 13,
-    color: '#1E40AF',
-    marginTop: 4,
-  },
-  mapPlaceholderHint: {
-    fontSize: 11,
-    color: '#93C5FD',
-    marginTop: 2,
-  },
-  radiusContainer: {
+  radiusRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    gap: 6,
+    flexWrap: 'wrap',
   },
   radiusLabel: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13,
     color: '#374151',
-    marginRight: 8,
+    fontWeight: '600',
   },
   radiusChip: {
     borderWidth: 1,
     borderColor: '#D1D5DB',
-    borderRadius: 20,
-    paddingHorizontal: 12,
+    borderRadius: 14,
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    marginRight: 6,
+    backgroundColor: '#FFFFFF',
   },
   radiusChipActive: {
-    backgroundColor: '#FF6B35',
     borderColor: '#FF6B35',
+    backgroundColor: '#FFF0EA',
   },
   radiusChipText: {
-    fontSize: 13,
-    color: '#6B7280',
+    fontSize: 12,
+    color: '#374151',
   },
   radiusChipTextActive: {
-    color: 'white',
+    color: '#FF6B35',
     fontWeight: '600',
   },
-  resultsSummary: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    fontSize: 13,
-    color: '#6B7280',
-    backgroundColor: '#F9FAFB',
+  refreshButton: {
+    paddingHorizontal: 6,
   },
-  listContent: {
-    padding: 12,
-    paddingBottom: 32,
+  refreshButtonText: {
+    fontSize: 16,
+  },
+  errorText: {
+    margin: 12,
+    color: '#EF4444',
+    textAlign: 'center',
+    fontSize: 13,
+  },
+  loader: {
+    padding: 32,
+  },
+  resultsCount: {
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 4,
+    fontSize: 12,
+    color: '#6B7280',
   },
   card: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 12,
+    marginBottom: 8,
+    borderRadius: 10,
+    padding: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
+    shadowOpacity: 0.07,
+    shadowRadius: 3,
     elevation: 2,
   },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
+  cardSelected: {
+    borderWidth: 2,
+    borderColor: '#FF6B35',
   },
-  sourceBadge: {
-    backgroundColor: '#EFF6FF',
+  distanceBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFF0EA',
     borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 2,
-  },
-  sourceBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#1D4ED8',
+    marginBottom: 4,
   },
   distanceText: {
-    fontSize: 12,
-    color: '#6B7280',
+    fontSize: 11,
+    color: '#FF6B35',
+    fontWeight: '700',
   },
   jobTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     color: '#111827',
-    marginBottom: 4,
+    marginBottom: 2,
   },
-  department: {
-    fontSize: 13,
+  orgName: {
+    fontSize: 12,
     color: '#374151',
-    marginBottom: 6,
+    marginBottom: 2,
   },
-  locationText: {
-    fontSize: 12,
+  location: {
+    fontSize: 11,
     color: '#6B7280',
-    marginBottom: 4,
   },
-  lastDate: {
-    fontSize: 12,
-    color: '#D97706',
-    marginBottom: 8,
-  },
-  applyButton: {
-    backgroundColor: '#004E89',
-    borderRadius: 8,
-    paddingVertical: 8,
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  applyButtonText: {
-    color: 'white',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  emptyContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 60,
-  },
-  emptyEmoji: {
-    fontSize: 48,
-    marginBottom: 12,
+  deadline: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    marginTop: 2,
   },
   emptyText: {
-    fontSize: 16,
-    color: '#374151',
-    marginBottom: 4,
-  },
-  emptyHint: {
-    fontSize: 13,
+    textAlign: 'center',
     color: '#9CA3AF',
+    marginTop: 32,
+    marginHorizontal: 24,
+    fontSize: 14,
   },
 });
