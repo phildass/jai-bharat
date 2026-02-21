@@ -1,0 +1,30 @@
+export const metadata = {
+  title: 'Jai Bharat – Government Jobs',
+  description: 'Discover, filter, and apply to thousands of Indian government jobs.',
+};
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en">
+      <head>
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </head>
+      <body style={{ margin: 0, fontFamily: 'system-ui, sans-serif', background: '#f5f5f5' }}>
+        <header style={{ background: '#1a237e', color: '#fff', padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <a href="/" style={{ color: '#fff', textDecoration: 'none', fontWeight: 700, fontSize: 20 }}>🇮🇳 Jai Bharat</a>
+          <nav style={{ marginLeft: 'auto', display: 'flex', gap: 16 }}>
+            <a href="/jobs" style={{ color: '#fff', textDecoration: 'none' }}>Jobs</a>
+            <a href="/jobs/near-me" style={{ color: '#fff', textDecoration: 'none' }}>Near Me</a>
+          </nav>
+        </header>
+        <main style={{ maxWidth: 1100, margin: '0 auto', padding: '20px 16px' }}>
+          {children}
+        </main>
+        <footer style={{ textAlign: 'center', padding: 16, color: '#666', fontSize: 13 }}>
+          © {new Date().getFullYear()} Jai Bharat · <a href="https://api.jaibharat.cloud/health" target="_blank" rel="noopener noreferrer" style={{ color: '#1a237e' }}>API Status</a>
+        </footer>
+      </body>
+    </html>
+  );
+}
