@@ -41,6 +41,12 @@ const OTP_MAX_ATTEMPTS = 5;
 const app = express();
 app.use(express.json());
 
+// Jobs & Geo routes
+const jobsRouter = require('./routes/jobs');
+const geoRouter  = require('./routes/geo');
+app.use('/api/jobs', jobsRouter);
+app.use('/api/geo',  geoRouter);
+
 // ---------------------------------------------------------------------------
 // Rate limiters
 // ---------------------------------------------------------------------------

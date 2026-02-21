@@ -27,7 +27,169 @@ jai-bharat/                    # Parent Shell
 └── docs/                     # Documentation
 ```
 
-## Features
+## Jobs Near Me & Job Search API
+
+### Overview
+
+Jai Bharat includes a full-featured **Jobs API** backed by Supabase Postgres, with:
+- Keyword full-text search (PostgreSQL FTS + pg_trgm fuzzy matching)
+- Filters (state, category, board, status) + pagination + facets
+- "Jobs Near Me" using PostGIS `ST_DWithin` (or Haversine fallback)
+- Server-side reverse geocoding via LocationIQ (key never exposed to client)
+
+---
+
+### Environment Variables
+
+Copy `.env.example` to `.env` and fill in:
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | ✅ | PostgreSQL connection string (Supabase pooler URL) |
+| `SUPABASE_URL` | ✅ | Supabase project URL (`https://xxxx.supabase.co`) |
+| `SUPABASE_SERVICE_ROLE_KEY` | ✅ | Supabase service-role key (server-only) |
+| `LOCATIONIQ_API_KEY` | ✅ | LocationIQ API key (server-only, never sent to client) |
+| `PORT` | optional | Backend port (default `3000`) |
+| `NODE_ENV` | optional | `development` or `production` |
+
+---
+
+### Running Supabase Migrations
+
+#### Option A – Supabase CLI (recommended)
+
+```bash
+# Install Supabase CLI
+npm install -g supabase
+
+# Initialize (first time only)
+supabase init
+
+# Start local Supabase stack
+supabase start
+
+# Apply migrations to local DB
+supabase db push
+
+# Apply migrations to remote Supabase project
+supabase db push --db-url "$DATABASE_URL"
+```
+
+#### Option B – psql directly
+
+```bash
+psql "$DATABASE_URL" -f supabase/migrations/20240101000000_create_jobs.sql
+```
+
+---
+
+### Seeding Sample Jobs
+
+After running migrations, seed 40 sample jobs across India:
+
+```bash
+cd backend
+npm run seed
+# Or: node scripts/seed-jobs.js
+```
+
+---
+
+### Running the Backend
+
+```bash
+cd backend
+npm install
+npm run dev   # development (nodemon)
+npm start     # production
+```
+
+---
+
+### API Endpoints
+
+#### GET /api/jobs
+
+Search and filter jobs.
+
+```bash
+# All active jobs
+curl "http://localhost:3000/api/jobs"
+
+# Keyword search
+curl "http://localhost:3000/api/jobs?q=Engineer"
+
+# Filter by state + category, paginate
+curl "http://localhost:3000/api/jobs?state=Maharashtra&category=Police&page=2&limit=10"
+
+# Sort by last date ascending
+curl "http://localhost:3000/api/jobs?sort=last_date&order=asc"
+```
+
+Response includes `jobs`, `total`, `page`, `totalPages`, and `facets` (state/category/status counts).
+
+#### GET /api/jobs/:id
+
+```bash
+curl "http://localhost:3000/api/jobs/<uuid>"
+```
+
+#### GET /api/jobs/nearby
+
+```bash
+# Jobs within 25 km of New Delhi
+curl "http://localhost:3000/api/jobs/nearby?lat=28.6139&lon=77.2090&radiusKm=25"
+
+# Jobs within 50 km of Mumbai
+curl "http://localhost:3000/api/jobs/nearby?lat=19.0760&lon=72.8777&radiusKm=50&limit=20"
+```
+
+Response includes `jobs` (each with `distanceKm`), sorted nearest-first.
+
+#### GET /api/geo/reverse
+
+Server-side proxy to LocationIQ (key never sent to client):
+
+```bash
+curl "http://localhost:3000/api/geo/reverse?lat=28.6139&lon=77.2090"
+```
+
+---
+
+### Smoke Tests
+
+With the backend running and jobs seeded:
+
+```bash
+cd backend
+BASE_URL=http://localhost:3000 npm run smoke-test
+```
+
+---
+
+### Frontend (React Native)
+
+The app includes three jobs screens accessible via bottom tab navigation:
+
+| Screen | Description |
+|--------|-------------|
+| **Jobs** tab | Search bar + filters + paginated list |
+| Job Detail | Full job info with Apply button |
+| **Near Me** tab | "Enable Location" → radius selector → Leaflet/OSM map + job list |
+
+The map uses [Leaflet](https://leafletjs.com/) + [OpenStreetMap](https://www.openstreetmap.org/) tiles, rendered inside a `react-native-webview`.
+
+To install WebView native module:
+
+```bash
+npm install react-native-webview
+cd ios && pod install   # iOS
+# Android links automatically via autolinking
+```
+
+---
+
+
 
 ### 1. Triple-Gate Navigation
 After login, users select their path:
