@@ -1,0 +1,45 @@
+{
+  "sources": [
+    {
+      "id": "employment-news-rss",
+      "name": "Employment News RSS",
+      "base_url": "https://www.employmentnews.gov.in/NewMain/RSSFeed.aspx",
+      "type": "rss",
+      "active": true,
+      "config": {
+        "titleField": "title",
+        "descriptionField": "contentSnippet",
+        "linkField": "link",
+        "defaultState": null,
+        "defaultCategory": "Government"
+      }
+    },
+    {
+      "id": "sarkari-result-html",
+      "name": "Sample HTML Job Board",
+      "base_url": "https://example-govt-jobs.in/latest-jobs",
+      "type": "html",
+      "active": false,
+      "config": {
+        "listSelector": ".job-item",
+        "titleSelector": ".job-title",
+        "orgSelector": ".job-org",
+        "linkSelector": "a",
+        "defaultState": "Central",
+        "defaultCategory": "Government"
+      }
+    },
+    {
+      "id": "upsc-notification-pdf",
+      "name": "UPSC Official Notification PDF",
+      "base_url": "https://upsc.gov.in/examinations/active-examinations",
+      "type": "pdf",
+      "active": false,
+      "config": {
+        "pdfUrlSelector": "a[href$='.pdf']",
+        "defaultOrg": "UPSC",
+        "defaultCategory": "Civil Services"
+      }
+    }
+  ]
+}

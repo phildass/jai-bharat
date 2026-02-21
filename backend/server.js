@@ -339,6 +339,15 @@ app.post('/api/subscription/verify-otp', otpLimiter, async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// Jobs & Geo routes
+// ---------------------------------------------------------------------------
+const jobsRouter = require('./routes/jobs');
+const geoRouter  = require('./routes/geo');
+
+app.use('/api/jobs', jobsRouter);
+app.use('/api/geo',  geoRouter);
+
+// ---------------------------------------------------------------------------
 // Start server
 // ---------------------------------------------------------------------------
 app.listen(PORT, () => {
