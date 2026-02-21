@@ -157,7 +157,7 @@
 - Success metrics
 
 **Migration Report** (6.6 KB)
-- Migration approach from iiskills-cloud
+- Module stub rationale and future integration checklist
 - Integration options
 - Module requirements checklist
 - Data migration plan
