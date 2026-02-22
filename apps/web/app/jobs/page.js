@@ -12,6 +12,18 @@ const SORT_OPTIONS = [
   { value: 'relevance', label: 'Relevance' },
 ];
 
+// Quick-filter tabs shown above the search form
+const QUICK_FILTERS = [
+  { label: '🆕 Latest', sort: 'latest', status: '', category: '', q: '' },
+  { label: '⏳ Last Date Soon', sort: 'closing_soon', status: 'open', category: '', q: '' },
+  { label: '🔥 Trending', sort: 'latest', status: '', category: '', q: '' },
+  { label: '📋 UPSC', sort: 'latest', status: '', category: 'UPSC', q: '' },
+  { label: '📝 SSC', sort: 'latest', status: '', category: 'SSC', q: '' },
+  { label: '🚂 Railways', sort: 'latest', status: '', category: 'Railways', q: '' },
+  { label: '🏦 Banking', sort: 'latest', status: '', category: 'Banking', q: '' },
+  { label: '🪖 Defence', sort: 'latest', status: '', category: 'Defence', q: '' },
+];
+
 const PAGE_SIZE = 20;
 
 function formatDate(d) {
@@ -20,6 +32,7 @@ function formatDate(d) {
 }
 
 export default function JobsPage() {
+  const [activeTab, setActiveTab] = useState(null);
   const [q, setQ] = useState('');
   const [state, setState] = useState('');
   const [district, setDistrict] = useState('');
@@ -58,9 +71,37 @@ export default function JobsPage() {
     load();
   }
 
+  function applyQuickFilter(tab) {
+    setActiveTab(tab.label);
+    setQ(tab.q);
+    setCategory(tab.category);
+    setStatus(tab.status);
+    setSort(tab.sort);
+    setPage(1);
+  }
+
   return (
     <div>
       <h1 style={{ marginTop: 0 }}>Government Jobs</h1>
+
+      {/* Quick-filter tabs */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+        {QUICK_FILTERS.map(tab => (
+          <button
+            key={tab.label}
+            onClick={() => applyQuickFilter(tab)}
+            style={{
+              padding: '7px 14px', borderRadius: 20, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              border: '1px solid',
+              borderColor: activeTab === tab.label ? '#1a237e' : '#ccc',
+              background: activeTab === tab.label ? '#1a237e' : '#fff',
+              color: activeTab === tab.label ? '#fff' : '#444',
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
       {/* Trial & Payment Notice */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, background: '#fff', border: '1px solid #e0e0e0', borderRadius: 8, padding: '12px 16px', marginBottom: 16, boxShadow: '0 1px 4px rgba(0,0,0,.06)' }}>
