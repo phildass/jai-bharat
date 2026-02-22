@@ -1,3 +1,5 @@
+import InstallButton from '../components/InstallButton';
+
 export const metadata = {
   title: 'Jai Bharat – Government Jobs',
   description: 'Discover, filter, and apply to thousands of Indian government jobs.',
@@ -12,6 +14,9 @@ export default function RootLayout({ children }) {
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="theme-color" content="#1a237e" />
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <link rel="apple-touch-icon" href="/images/jaibharat.logo.png" />
       </head>
       <body style={{ margin: 0, fontFamily: 'system-ui, sans-serif', background: '#f5f5f5' }}>
         <header style={{ background: '#1a237e', color: '#fff', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -23,19 +28,7 @@ export default function RootLayout({ children }) {
           <nav style={{ marginLeft: 'auto', display: 'flex', gap: 16, alignItems: 'center' }}>
             <a href="/jobs" style={{ color: '#fff', textDecoration: 'none' }}>Jobs</a>
             <a href="/jobs/near-me" style={{ color: '#fff', textDecoration: 'none' }}>Near Me</a>
-            <a
-              href={APP_DOWNLOAD_URL}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                background: '#fff', color: '#1a237e',
-                padding: '6px 14px', borderRadius: 6,
-                textDecoration: 'none', fontWeight: 600, fontSize: 13,
-              }}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/images/jaibharat.logo.png" alt="" aria-hidden="true" width={18} height={18} style={{ borderRadius: 2 }} />
-              Download App
-            </a>
+            <InstallButton apkUrl={APP_DOWNLOAD_URL} />
           </nav>
         </header>
         <main style={{ maxWidth: 1100, margin: '0 auto', padding: '20px 16px' }}>
