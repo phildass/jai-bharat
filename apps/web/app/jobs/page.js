@@ -3,6 +3,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { fetchJobs } from '../../lib/api';
 
+const PAYMENT_URL =
+  process.env.NEXT_PUBLIC_PAYMENT_URL || 'https://aienter.in/payments/jaibharat';
+
 const SORT_OPTIONS = [
   { value: 'latest', label: 'Latest' },
   { value: 'closing_soon', label: 'Closing Soon' },
@@ -58,6 +61,21 @@ export default function JobsPage() {
   return (
     <div>
       <h1 style={{ marginTop: 0 }}>Government Jobs</h1>
+
+      {/* Trial & Payment Notice */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, background: '#fff', border: '1px solid #e0e0e0', borderRadius: 8, padding: '12px 16px', marginBottom: 16, boxShadow: '0 1px 4px rgba(0,0,0,.06)' }}>
+        <p style={{ margin: 0, fontSize: 14, color: '#444' }}>
+          <strong>Free for the first 24 hours.</strong> After that you need to pay ₹99 (+18% GST) to continue.
+        </p>
+        <a
+          href={PAYMENT_URL}
+          target="_blank"
+          rel="noreferrer"
+          style={{ display: 'inline-block', padding: '8px 20px', borderRadius: 6, background: '#1a237e', color: '#fff', textDecoration: 'none', fontWeight: 600, fontSize: 14, whiteSpace: 'nowrap' }}
+        >
+          Pay Now
+        </a>
+      </div>
 
       {/* Search + Filters */}
       <form onSubmit={handleSearch} style={{ background: '#fff', padding: 16, borderRadius: 8, marginBottom: 16, boxShadow: '0 1px 4px rgba(0,0,0,.1)' }}>

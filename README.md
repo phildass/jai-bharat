@@ -156,6 +156,31 @@ npm run lint
 
 See [ROADMAP.md](docs/ROADMAP.md) for planned features and improvements.
 
+## Web App & Backend – Environment Variables
+
+### `apps/web` (Next.js)
+
+Copy `apps/web/.env.local.example` to `apps/web/.env.local` and set:
+
+| Variable | Description | Example |
+|---|---|---|
+| `NEXT_PUBLIC_API_BASE_URL` | Backend API base URL (no trailing slash) | `https://api.jaibharat.cloud` |
+| `NEXT_PUBLIC_APP_DOWNLOAD_URL` | APK / App Store download URL | `/downloads/jai-bharat.apk` |
+| `NEXT_PUBLIC_PAYMENT_URL` | Payment page URL for the "Pay Now" button | `https://aienter.in/payments/jaibharat` |
+
+### `backend` (Node/Express)
+
+Copy `backend/.env.example` to `backend/.env` and set:
+
+| Variable | Description | Required |
+|---|---|---|
+| `DATABASE_URL` | PostgreSQL connection string | Yes (production) |
+| `PORT` | Server port (default `8080`) | No |
+| `TEST_DATA_MODE` | Set to `true` to return in-memory seed jobs without a DB (testing only) | No |
+| `CORS_ORIGINS` | Comma-separated extra CORS origins to allow | No |
+
+> **Testing note**: Set `TEST_DATA_MODE=true` in the backend when no database is available. This returns 5 deterministic sample jobs for all job endpoints and is intended for development/testing only.
+
 ## Contributing
 
 Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.

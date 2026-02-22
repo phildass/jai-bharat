@@ -17,7 +17,7 @@ export default function RootLayout({ children }) {
         <header style={{ background: '#1a237e', color: '#fff', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
           <a href="/" style={{ color: '#fff', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/jaibharat-logo.svg" alt="Jai Bharat logo" width={36} height={36} style={{ borderRadius: 4 }} />
+            <img src="/images/jaibharat.logo.png" alt="Jai Bharat logo" width={36} height={36} style={{ borderRadius: 4 }} />
             <span style={{ fontWeight: 700, fontSize: 20 }}>Jai Bharat</span>
           </a>
           <nav style={{ marginLeft: 'auto', display: 'flex', gap: 16, alignItems: 'center' }}>
@@ -33,7 +33,7 @@ export default function RootLayout({ children }) {
               }}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/jaibharat-logo.svg" alt="" aria-hidden="true" width={18} height={18} style={{ borderRadius: 2 }} />
+              <img src="/images/jaibharat.logo.png" alt="" aria-hidden="true" width={18} height={18} style={{ borderRadius: 2 }} />
               Download App
             </a>
           </nav>
