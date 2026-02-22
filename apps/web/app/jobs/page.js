@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { fetchJobs } from '../../lib/api';
 
 const PAYMENT_URL =
-  process.env.NEXT_PUBLIC_PAYMENT_URL || 'https://aienter.in/payments/jaibharat';
+  process.env.NEXT_PUBLIC_PAYMENT_URL || 'https://jaibharat.cloud/pay';
 
 const SORT_OPTIONS = [
   { value: 'latest', label: 'Latest' },
@@ -110,8 +110,7 @@ export default function JobsPage() {
         </p>
         <a
           href={PAYMENT_URL}
-          target="_blank"
-          rel="noreferrer"
+          rel="noopener"
           style={{ display: 'inline-block', padding: '8px 20px', borderRadius: 6, background: '#1a237e', color: '#fff', textDecoration: 'none', fontWeight: 600, fontSize: 14, whiteSpace: 'nowrap' }}
         >
           Pay Now

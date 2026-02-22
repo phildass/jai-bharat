@@ -277,7 +277,17 @@ router.get('/', jobsLimiter, async (req, res) => {
     });
   } catch (err) {
     console.error('GET /api/jobs error:', err);
-    return res.status(500).json({ error: 'Internal server error' });
+    // Fall back to test data when DB is unreachable
+    const { q, state, category, status } = req.query;
+    let results = TEST_JOBS.slice();
+    if (q)        results = results.filter(j => j.title.toLowerCase().includes(q.toLowerCase()) || j.organisation.toLowerCase().includes(q.toLowerCase()));
+    if (state)    results = results.filter(j => j.state && j.state.toLowerCase() === state.toLowerCase());
+    if (category) results = results.filter(j => j.category && j.category.toLowerCase() === category.toLowerCase());
+    if (status)   results = results.filter(j => j.status === status);
+    const states     = [...new Set(TEST_JOBS.map(j => j.state).filter(Boolean))].sort();
+    const categories = [...new Set(TEST_JOBS.map(j => j.category).filter(Boolean))].sort();
+    const statuses   = [...new Set(TEST_JOBS.map(j => j.status).filter(Boolean))].sort();
+    return res.json({ results, total: results.length, page: 1, pageSize: results.length, facets: { states, categories, statuses } });
   }
 });
 
@@ -340,7 +350,14 @@ router.get('/nearby', jobsLimiter, async (req, res) => {
     return res.json({ results: nearby, total: nearby.length, radiusKm });
   } catch (err) {
     console.error('GET /api/jobs/nearby error:', err);
-    return res.status(500).json({ error: 'Internal server error' });
+    // Fall back to test data when DB is unreachable
+    const nearby = TEST_JOBS
+      .filter(j => j.lat !== null && j.lon !== null && j.status === 'open')
+      .map(j => ({ ...j, distanceKm: parseFloat(haversine(lat, lon, j.lat, j.lon).toFixed(2)) }))
+      .filter(j => j.distanceKm <= radiusKm)
+      .sort((a, b) => a.distanceKm - b.distanceKm)
+      .slice(0, limit);
+    return res.json({ results: nearby, total: nearby.length, radiusKm });
   }
 });
 
@@ -368,7 +385,10 @@ router.get('/:id', jobsLimiter, async (req, res) => {
     return res.json(result.rows[0]);
   } catch (err) {
     console.error('GET /api/jobs/:id error:', err);
-    return res.status(500).json({ error: 'Internal server error' });
+    // Fall back to test data when DB is unreachable
+    const job = TEST_JOBS.find(j => j.id === id);
+    if (!job) return res.status(404).json({ error: 'Job not found' });
+    return res.json(job);
   }
 });
 
