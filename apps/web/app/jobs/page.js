@@ -100,7 +100,12 @@ export default function JobsPage() {
 
       {/* Loading / Error */}
       {loading && <p>Loading…</p>}
-      {error && <p style={{ color: '#c00' }}>Error: {error}</p>}
+      {error && (
+        <p style={{ color: '#c00' }}>
+          Error: {error}{' '}
+          <a href="/api-status" style={{ color: '#1a237e', fontSize: 13 }}>Check API Status →</a>
+        </p>
+      )}
 
       {/* Job list */}
       {!loading && !error && jobs.length === 0 && <p>No jobs found. Try adjusting your filters.</p>}

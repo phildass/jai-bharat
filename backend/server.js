@@ -43,11 +43,21 @@ const OTP_MAX_ATTEMPTS = 5;
 // ---------------------------------------------------------------------------
 // CORS allowed origins
 // ---------------------------------------------------------------------------
+// Extra origins can be injected at runtime via CORS_ORIGINS (comma-separated).
+const extraOrigins = (process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map(o => o.trim())
+  .filter(Boolean);
+
 const CORS_ORIGINS = [
   'https://app.jaibharat.cloud',
   'https://jaibharat.cloud',
+  'https://bharat.jaibharat.cloud',
+  'http://bharat.jaibharat.cloud',
+  'http://72.60.203.189:3001',
   /^http:\/\/localhost(:\d+)?$/,
   /^http:\/\/127\.0\.0\.1(:\d+)?$/,
+  ...extraOrigins,
 ];
 
 // ---------------------------------------------------------------------------
@@ -55,12 +65,16 @@ const CORS_ORIGINS = [
 // ---------------------------------------------------------------------------
 const app = express();
 
-app.use(cors({
+const corsOptions = {
   origin: CORS_ORIGINS,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
-}));
+};
+
+app.use(cors(corsOptions));
+
+// Respond to OPTIONS preflight for all routes
+app.options('*', cors(corsOptions));
 
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 app.use(express.json());

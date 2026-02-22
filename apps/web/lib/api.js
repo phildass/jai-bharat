@@ -3,13 +3,20 @@
 // lib/api.js – thin wrapper around the backend API
 // Uses NEXT_PUBLIC_API_BASE_URL (safe, no secrets)
 
-const BASE_URL =
+export const BASE_URL =
   (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_BASE_URL) ||
   'http://localhost:8080';
 
 async function apiFetch(path, options = {}) {
   const url = `${BASE_URL}${path}`;
-  const res = await fetch(url, { ...options, cache: 'no-store' });
+  let res;
+  try {
+    res = await fetch(url, { ...options, cache: 'no-store' });
+  } catch (networkErr) {
+    throw new Error(
+      `API unreachable. Check NEXT_PUBLIC_API_BASE_URL and CORS. (URL: ${BASE_URL}) – ${networkErr.message}`
+    );
+  }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.error || `API error ${res.status}`);

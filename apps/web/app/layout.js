@@ -3,6 +3,9 @@ export const metadata = {
   description: 'Discover, filter, and apply to thousands of Indian government jobs.',
 };
 
+const APP_DOWNLOAD_URL =
+  process.env.NEXT_PUBLIC_APP_DOWNLOAD_URL || '/downloads/jai-bharat.apk';
+
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
@@ -11,18 +14,36 @@ export default function RootLayout({ children }) {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>
       <body style={{ margin: 0, fontFamily: 'system-ui, sans-serif', background: '#f5f5f5' }}>
-        <header style={{ background: '#1a237e', color: '#fff', padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
-          <a href="/" style={{ color: '#fff', textDecoration: 'none', fontWeight: 700, fontSize: 20 }}>🇮🇳 Jai Bharat</a>
-          <nav style={{ marginLeft: 'auto', display: 'flex', gap: 16 }}>
+        <header style={{ background: '#1a237e', color: '#fff', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <a href="/" style={{ color: '#fff', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/jaibharat-logo.svg" alt="Jai Bharat logo" width={36} height={36} style={{ borderRadius: 4 }} />
+            <span style={{ fontWeight: 700, fontSize: 20 }}>Jai Bharat</span>
+          </a>
+          <nav style={{ marginLeft: 'auto', display: 'flex', gap: 16, alignItems: 'center' }}>
             <a href="/jobs" style={{ color: '#fff', textDecoration: 'none' }}>Jobs</a>
             <a href="/jobs/near-me" style={{ color: '#fff', textDecoration: 'none' }}>Near Me</a>
+            <a
+              href={APP_DOWNLOAD_URL}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                background: '#fff', color: '#1a237e',
+                padding: '6px 14px', borderRadius: 6,
+                textDecoration: 'none', fontWeight: 600, fontSize: 13,
+              }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/jaibharat-logo.svg" alt="" aria-hidden="true" width={18} height={18} style={{ borderRadius: 2 }} />
+              Download App
+            </a>
           </nav>
         </header>
         <main style={{ maxWidth: 1100, margin: '0 auto', padding: '20px 16px' }}>
           {children}
         </main>
         <footer style={{ textAlign: 'center', padding: 16, color: '#666', fontSize: 13 }}>
-          © {new Date().getFullYear()} Jai Bharat · <a href="https://api.jaibharat.cloud/health" target="_blank" rel="noopener noreferrer" style={{ color: '#1a237e' }}>API Status</a>
+          © {new Date().getFullYear()} Jai Bharat ·{' '}
+          <a href="/api-status" style={{ color: '#1a237e' }}>API Status</a>
         </footer>
       </body>
     </html>
