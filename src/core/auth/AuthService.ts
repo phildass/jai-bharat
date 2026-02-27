@@ -5,7 +5,14 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UserProfile } from '../../modules/interfaces';
-import { login as apiLogin, logout as apiLogout } from '../../services/authService';
+import {
+  login as apiLogin,
+  logout as apiLogout,
+  startPhoneOTP,
+  verifyPhoneOTP,
+  refreshAccessToken,
+  getMe,
+} from '../../services/authService';
 
 export interface AuthToken {
   accessToken: string;
@@ -80,25 +87,112 @@ class AuthService {
   }
 
   /**
+   * Send OTP to phone number
+   */
+  async startOTP(phone: string): Promise<void> {
+    await startPhoneOTP(phone);
+  }
+
+  /**
    * Login with phone OTP
    */
   async loginWithOTP(phone: string, otp: string): Promise<AuthState> {
     try {
-      // TODO: Replace with actual API call
-      const response = await this.mockOTPLogin(phone, otp);
-      
+      const deviceId = (await AsyncStorage.getItem('device_id')) || 'unknown-device';
+      const response = await verifyPhoneOTP({ phone, otp, deviceId });
+
       this.authState = {
         isAuthenticated: true,
-        user: response.user,
-        token: response.token,
+        user: this.buildUserProfile({
+          id: response.user.id,
+          phone: response.user.phone,
+          name: response.user.name,
+        }),
+        token: {
+          accessToken: response.token,
+          refreshToken: response.refreshToken,
+          expiresIn: 2592000,
+          tokenType: 'Bearer',
+        },
       };
 
       this.notifyListeners();
       await this.persistAuthState();
-      
+      await AsyncStorage.setItem('refresh_token', response.refreshToken);
+      await AsyncStorage.setItem('user_phone', response.user.phone);
+
       return this.authState;
     } catch (error) {
       throw new Error('OTP login failed: ' + (error as Error).message);
+    }
+  }
+
+  /**
+   * Restore auth state from AsyncStorage on app launch
+   */
+  async loadStoredAuth(): Promise<void> {
+    try {
+      const [accessToken, refreshToken, userId, userPhone] = await AsyncStorage.multiGet([
+        'jwt_token',
+        'refresh_token',
+        'user_id',
+        'user_phone',
+      ]);
+
+      const token = accessToken[1];
+      if (!token) return;
+
+      try {
+        const profile = await getMe(token);
+        this.authState = {
+          isAuthenticated: true,
+          user: this.buildUserProfile({
+            id: profile.user.id,
+            phone: profile.user.phone,
+            name: profile.user.name,
+            email: profile.user.email,
+          }),
+          token: {
+            accessToken: token,
+            refreshToken: refreshToken[1] || '',
+            expiresIn: 2592000,
+            tokenType: 'Bearer',
+          },
+        };
+        this.notifyListeners();
+      } catch {
+        // Token may be expired; attempt a refresh
+        const storedRefresh = refreshToken[1];
+        if (storedRefresh) {
+          await this.refreshAuth();
+        }
+      }
+    } catch {
+      // Storage read failed; stay unauthenticated
+    }
+  }
+
+  /**
+   * Refresh access token using stored refresh token
+   */
+  async refreshAuth(): Promise<void> {
+    const storedRefresh = await AsyncStorage.getItem('refresh_token');
+    if (!storedRefresh) throw new Error('No refresh token available');
+
+    try {
+      const result = await refreshAccessToken(storedRefresh);
+      if (this.authState.token) {
+        this.authState.token = {
+          ...this.authState.token,
+          accessToken: result.token,
+          refreshToken: result.refreshToken,
+        };
+      }
+      await AsyncStorage.setItem('jwt_token', result.token);
+      await AsyncStorage.setItem('refresh_token', result.refreshToken);
+      this.notifyListeners();
+    } catch (error) {
+      throw new Error('Token refresh failed: ' + (error as Error).message);
     }
   }
 
@@ -147,13 +241,15 @@ class AuthService {
     }
 
     try {
-      // TODO: Replace with actual API call
-      const response = await this.mockRefreshToken(this.authState.token.refreshToken);
-      
-      this.authState.token = response;
+      const result = await refreshAccessToken(this.authState.token.refreshToken);
+      this.authState.token = {
+        ...this.authState.token,
+        accessToken: result.token,
+        refreshToken: result.refreshToken,
+      };
       await this.persistAuthState();
-      
-      return response;
+      await AsyncStorage.setItem('refresh_token', result.refreshToken);
+      return this.authState.token;
     } catch (error) {
       throw new Error('Token refresh failed: ' + (error as Error).message);
     }
@@ -174,6 +270,41 @@ class AuthService {
    */
   private notifyListeners(): void {
     this.listeners.forEach(listener => listener(this.authState));
+  }
+
+  /**
+   * Build a UserProfile from partial API data
+   */
+  private buildUserProfile(data: {
+    id: string;
+    phone: string;
+    name?: string;
+    email?: string;
+  }): UserProfile {
+    return {
+      id: data.id,
+      name: data.name || '',
+      email: data.email || '',
+      phone: data.phone,
+      preferences: {
+        language: 'hi',
+        voiceEnabled: true,
+        notificationsEnabled: true,
+        targetExams: [],
+      },
+      documents: [],
+      eligibility: {
+        education: [],
+        age: 0,
+        category: 'GEN',
+        state: '',
+        district: '',
+      },
+      location: {
+        state: '',
+        district: '',
+      },
+    };
   }
 
   /**
