@@ -35,3 +35,67 @@ export async function login(data: { email: string; password: string }) {
 export async function logout() {
   await AsyncStorage.multiRemove(['user_id', 'jwt_token', 'user_email', 'user_name']);
 }
+
+export async function startPhoneOTP(phone: string): Promise<{ message: string }> {
+  try {
+    const response = await axios.post(`${API_BASE_URL}/api/auth/start`, { phone });
+    return response.data;
+  } catch (error: any) {
+    if (error.response) {
+      throw new Error(error.response.data.message || 'Failed to send OTP');
+    }
+    throw new Error('Network error. Please try again.');
+  }
+}
+
+export async function verifyPhoneOTP(data: {
+  phone: string;
+  otp: string;
+  deviceId: string;
+}): Promise<{
+  token: string;
+  refreshToken: string;
+  user: { id: string; phone: string; name?: string };
+  entitlements: { hasAccess: boolean; reason: string; hoursRemaining?: number };
+}> {
+  try {
+    const response = await axios.post(`${API_BASE_URL}/api/auth/verify-otp`, data);
+    return response.data;
+  } catch (error: any) {
+    if (error.response) {
+      throw new Error(error.response.data.message || 'OTP verification failed');
+    }
+    throw new Error('Network error. Please try again.');
+  }
+}
+
+export async function refreshAccessToken(
+  refreshToken: string,
+): Promise<{ token: string; refreshToken: string }> {
+  try {
+    const response = await axios.post(`${API_BASE_URL}/api/auth/refresh`, { refreshToken });
+    return response.data;
+  } catch (error: any) {
+    if (error.response) {
+      throw new Error(error.response.data.message || 'Token refresh failed');
+    }
+    throw new Error('Network error. Please try again.');
+  }
+}
+
+export async function getMe(accessToken: string): Promise<{
+  user: { id: string; phone: string; name?: string; email?: string };
+  entitlements: { hasAccess: boolean; reason: string; hoursRemaining?: number };
+}> {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/api/auth/me`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    return response.data;
+  } catch (error: any) {
+    if (error.response) {
+      throw new Error(error.response.data.message || 'Failed to fetch profile');
+    }
+    throw new Error('Network error. Please try again.');
+  }
+}
