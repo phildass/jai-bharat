@@ -207,7 +207,7 @@ router.post('/start', phoneLimiter, async (req, res) => {
   }
 
   try {
-    const otp = String(crypto.randomInt(100000, 1000000));
+    const otp = String(crypto.randomInt(100000, 1000000)).padStart(6, '0');
     const otpHash = sha256(otp);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 

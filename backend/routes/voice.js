@@ -1,8 +1,11 @@
 const express = require('express');
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
 const rateLimit = require('express-rate-limit');
-const { v4: uuidv4 } = require('uuid');
+
+const router = express.Router();
+const uuidv4 = () => crypto.randomUUID();
 
 const VOICE_VERIFICATION_THRESHOLD = 0.85;
 const pool = new Pool({
@@ -87,6 +90,21 @@ function buildResponse(intent, transcript) {
     case 'help': return { response: 'How can I help you?', ttsText: 'How can I help you today?' };
     default: return { response: 'I did not understand that.', ttsText: 'Sorry, I did not understand. Please try again.' };
   }
+}
+
+/**
+ * Compute cosine similarity between two Float32Arrays.
+ * Returns a value in [-1, 1]; 1 means identical direction.
+ */
+function cosineSimilarity(a, b) {
+  if (a.length !== b.length) return 0;
+  let dot = 0, normA = 0, normB = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+  return (normA > 0 && normB > 0) ? dot / (Math.sqrt(normA) * Math.sqrt(normB)) : 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -222,13 +240,7 @@ router.post('/verify', enrollVerifyLimiter, requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Embedding dimension mismatch', ttsText: 'Voice data format mismatch. Please re-enroll.' });
     }
 
-    let dot = 0, normA = 0, normB = 0;
-    for (let i = 0; i < incoming.length; i++) {
-      dot += incoming[i] * stored[i];
-      normA += incoming[i] * incoming[i];
-      normB += stored[i] * stored[i];
-    }
-    const confidence = (normA > 0 && normB > 0) ? dot / (Math.sqrt(normA) * Math.sqrt(normB)) : 0;
+    const confidence = cosineSimilarity(incoming, stored);
     const verified = confidence >= VOICE_VERIFICATION_THRESHOLD;
 
     return res.json({ verified, confidence: parseFloat(confidence.toFixed(4)) });

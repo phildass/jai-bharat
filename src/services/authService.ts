@@ -38,7 +38,7 @@ export async function logout() {
 
 export async function startPhoneOTP(phone: string): Promise<{ message: string }> {
   try {
-    const response = await axios.post(`${API_BASE_URL}/api/auth/otp/send`, { phone });
+    const response = await axios.post(`${API_BASE_URL}/api/auth/start`, { phone });
     return response.data;
   } catch (error: any) {
     if (error.response) {
@@ -59,7 +59,7 @@ export async function verifyPhoneOTP(data: {
   entitlements: { hasAccess: boolean; reason: string; hoursRemaining?: number };
 }> {
   try {
-    const response = await axios.post(`${API_BASE_URL}/api/auth/otp/verify`, data);
+    const response = await axios.post(`${API_BASE_URL}/api/auth/verify-otp`, data);
     return response.data;
   } catch (error: any) {
     if (error.response) {
@@ -73,7 +73,7 @@ export async function refreshAccessToken(
   refreshToken: string,
 ): Promise<{ token: string; refreshToken: string }> {
   try {
-    const response = await axios.post(`${API_BASE_URL}/api/auth/token/refresh`, { refreshToken });
+    const response = await axios.post(`${API_BASE_URL}/api/auth/refresh`, { refreshToken });
     return response.data;
   } catch (error: any) {
     if (error.response) {
