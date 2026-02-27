@@ -20,6 +20,8 @@ const rateLimit = require('express-rate-limit');
 
 const geoRouter = require('./routes/geo');
 const jobsRouter = require('./routes/jobs');
+const authRouter = require('./routes/auth');
+const voiceRouter = require('./routes/voice');
 
 // ---------------------------------------------------------------------------
 // Database connection
@@ -84,6 +86,8 @@ app.use(express.json());
 // ---------------------------------------------------------------------------
 app.use('/api/geo', geoRouter);
 app.use('/api/jobs', jobsRouter);
+app.use('/api/auth', authRouter);
+app.use('/api/voice', voiceRouter);
 
 // ---------------------------------------------------------------------------
 // GET /health
